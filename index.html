@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#c0392b" />
   <title>CMC PERT Toolkit</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -64,7 +65,24 @@
       text-transform: uppercase;
       transition: color 0.2s, border-color 0.2s;
       scroll-snap-align: start;
+      min-height: 44px;
     }
+    .tab-btn:focus-visible, .quick-nav select:focus-visible { outline: 3px solid #f39c12; outline-offset: 2px; }
+    .skip-link { position: fixed; left: 10px; top: -60px; z-index: 999; background: #fff; color: #c0392b; padding: 10px 14px; border-radius: 6px; font-weight: 700; }
+    .skip-link:focus { top: 10px; }
+    .quick-nav { display: none; padding: 8px 14px; background: #fff; border-bottom: 1px solid #e0e0e0; }
+    .quick-nav label { display: block; font-size: .78rem; font-weight: 700; color: #555; }
+    .quick-nav select { width: 100%; min-height: 44px; margin-top: 4px; padding: 8px 10px; border: 1.5px solid #c0392b; border-radius: 8px; background: #fff; font: inherit; }
+    @media (max-width: 600px) { .quick-nav { display: block; } }
+    @media (min-width: 900px) { .tab-bar { justify-content: center; } }
+
+    /* Readable at arm's length on QR-opened phone screens. */
+    body { font-size: 16px; }
+    .card p, .card li { font-size: 1rem !important; line-height: 1.65; }
+    .card h3 { font-size: 1rem !important; }
+    table { font-size: .95rem !important; }
+    .def-box p, footer { font-size: .9rem !important; line-height: 1.6; }
+    .tab-btn { font-size: .85rem !important; }
     .tab-btn:hover { color: #c0392b; }
     .tab-btn.active {
       color: #c0392b;
@@ -260,14 +278,15 @@
   </style>
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to clinical content</a>
 
 <header>
   <h1>CMC PERT Team</h1>
   <p>Pulmonary Embolism Response Team &mdash; Clinical Reference</p>
 </header>
 
-<div class="tab-bar">
-  <button class="tab-btn active" onclick="showTab('tab1', this)">Algorithm</button>
+<div class="tab-bar" role="navigation" aria-label="Toolkit sections">
+  <button class="tab-btn active" data-tab="tab1" onclick="showTab('tab1', this)">Algorithm</button>
   <button class="tab-btn" onclick="showTab('tab2', this)">Risk Scores</button>
   <button class="tab-btn" onclick="showTab('tab3', this)">PE Categories</button>
   <button class="tab-btn" onclick="showTab('tab4', this)">Anticoagulation</button>
@@ -275,9 +294,16 @@
   <button class="tab-btn" onclick="showTab('tab6', this)">Thrombolytics</button>
   <button class="tab-btn" onclick="showTab('tab7', this)">Critical Care</button>
 </div>
+<div class="quick-nav">
+  <label for="sectionJump">Jump to a section</label>
+  <select id="sectionJump" onchange="showTab(this.value)">
+    <option value="tab1">Algorithm</option><option value="tab2">Risk Scores</option><option value="tab3">PE Categories</option><option value="tab4">Anticoagulation</option><option value="tab5">Fibrinolytic Contraindications</option><option value="tab6">Thrombolytics</option><option value="tab7">Critical Care</option>
+  </select>
+</div>
 
 <!-- TAB 1: ALGORITHM -->
-<div id="tab1" class="tab-content active">
+<div id="tab1" class="tab-content active" tabindex="-1">
+  <span id="main-content"></span>
   <div class="card">
     <h2>PERT Algorithm</h2>
     <div class="img-container">
@@ -629,13 +655,27 @@
 </footer>
 
 <script>
-  function showTab(id, btn) {
+  function showTab(id, btn, options = {}) {
+    const panel = document.getElementById(id);
+    const targetBtn = btn || document.querySelector(`.tab-btn[data-tab="${id}"]`) || [...document.querySelectorAll('.tab-btn')].find(b => b.getAttribute('onclick')?.includes(`'${id}'`));
+    if (!panel || !targetBtn) return;
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    btn.classList.add('active');
-    btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-current','false'); });
+    panel.classList.add('active');
+    targetBtn.classList.add('active'); targetBtn.setAttribute('aria-current','page');
+    targetBtn.scrollIntoView({ behavior: options.instant ? 'auto' : 'smooth', block: 'nearest', inline: 'center' });
+    document.getElementById('sectionJump').value = id;
+    if (location.hash !== '#' + id) history.replaceState(null, '', '#' + id);
+    if (!options.noScroll) window.scrollTo({ top: 0, behavior: options.instant ? 'auto' : 'smooth' });
   }
+  document.querySelectorAll('.tab-btn').forEach((button, index) => {
+    const match = button.getAttribute('onclick')?.match(/showTab\('([^']+)'/);
+    if (match) button.dataset.tab = match[1];
+    button.setAttribute('aria-current', index === 0 ? 'page' : 'false');
+  });
+  const initialTab = location.hash.slice(1);
+  if (initialTab && document.getElementById(initialTab)) showTab(initialTab, null, { instant: true, noScroll: true });
+  window.addEventListener('hashchange', () => { const id = location.hash.slice(1); if (document.getElementById(id)) showTab(id, null, { instant: true }); });
 </script>
 
 </body>
